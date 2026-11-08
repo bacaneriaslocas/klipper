@@ -51,8 +51,10 @@ class PrinterSensorCombined:
                 raise self.printer.config_error(
                         "'%s' does not report a temperature."
                         % (sensor_name,))
-            # Handle temperature monitors
-            if status["temperature"] is None:
+            # Handle temperature monitors (TMC drivers report None while
+            # their motor is disabled; those values are skipped in update_temp)
+            if status["temperature"] is None and \
+                    not sensor_name.startswith('tmc'):
                 raise self.printer.config_error(
                         "Temperature monitor '%s' is not supported"
                         % (sensor_name,))
@@ -81,7 +83,10 @@ class PrinterSensorCombined:
         for sensor in self.sensors:
             sensor_status = sensor.get_status(eventtime)
             sensor_temperature = sensor_status['temperature']
-            values.append(sensor_temperature)
+            if sensor_temperature is not None:
+                values.append(sensor_temperature)
+        if not values:
+            return
 
         # check if values are out of max_deviation range
         if (max(values) - min(values)) > self.max_deviation:
